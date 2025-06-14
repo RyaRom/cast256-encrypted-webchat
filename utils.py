@@ -1,7 +1,36 @@
 """
 Ce fichier comprend une série de fonctions utiles qui effectuent des opérations basiques arithmétiques et binaires.
 """
+chunk_bytes = 16
+parts_per_chunk = 4
 
+
+def split_with_len(data, size):
+    """
+    Разбить на части длинной size байт
+    """
+    parts = len(data) // size
+    return [data[i * size: i * size + size] for i in range(parts)]
+
+def split_on_parts(data, parts):
+    """
+    Разбить на parts частей
+    """
+    size = len(data) // parts
+    return [data[i * size: i * size + size] for i in range(parts)]
+
+def padding(data: bytes):
+    """
+    Добавляем недостающие байты в конец по алгоритму pkcs#7
+    """
+    size = len(data)
+    padding_len = chunk_bytes - (size % chunk_bytes)
+    padding_str = bytes([padding_len]) * padding_len
+    return data + padding_str
+
+def depadding(padded: bytes):
+    padding_len = int(padded[-1])
+    return padded[:-padding_len]
 
 def sum_mod_232(a, b):
     """
@@ -57,6 +86,8 @@ def extract_32bit_bloc_from_128(abcd):
     # Masque pour extraire 32 bits
     mask_32_bits = 0xFFFFFFFF
     # Extraction des blocs a, b, c et d.
+    if type(abcd) is bytes:
+        abcd = int.from_bytes(abcd, byteorder='big')
     a = (abcd >> 96) & mask_32_bits
     b = (abcd >> 64) & mask_32_bits
     c = (abcd >> 32) & mask_32_bits
@@ -76,6 +107,8 @@ def extract_32bit_bloc_from_256(abcdefgh):
     """
     # Masque pour extraire 32 bits
     mask_32_bits = 0xFFFFFFFF
+    if type(abcdefgh) is bytes:
+        abcdefgh = int.from_bytes(abcdefgh, byteorder='big')
     # Extraction des blocs a, b, c, d, e, f, g et h.
     a = (abcdefgh >> 224) & mask_32_bits
     b = (abcdefgh >> 192) & mask_32_bits

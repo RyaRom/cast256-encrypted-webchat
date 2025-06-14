@@ -1,93 +1,45 @@
 from os import urandom
-import cast256
 
-def rdm_iv_generator():
-    """
-    Cette fonction doit pouvoir générer un nombre aléatoire de 128bits
-    :return: un entier représenté sur 128 bits généré de manière aléatoire.
-    """
+import cast256
+import utils
+from utils import padding
+
+
+def random_key():
     return int.from_bytes(urandom(16), byteorder="big")
 
 
-def encrypt_ecb(blocks, key):
+def decrypt_chunk(blocks: list[int], key):
     """
-    Cette fonction applique le chiffrement CAST256 à une liste de blocs de 128 bits suivant le mode d'opération ECB.
-    :param blocks: Liste de blocs (128bits) à chiffrer.
-    :param key: clé de chiffrement 256 bits
-    :return: la liste de blocs chiffrés.
-    """
-    return [cast256.encrypt_block(block, key) for block in blocks]
-
-
-def decrypt_ecb(blocks, key):
-    """
-    Cette fonction dé-chiffre une liste de blocs de 128 bits qui a été préalablement chiffrée
-    avec la méthode CAST256 suivant le mode d'opération ECB.
-    :param blocks: Liste de blocs à déchiffrer.
-    :param key: clé de chiffrement 256 bits
-    Identique à celle utilisée pour le chiffrement.
-    :return: la liste de blocs déchiffrés.
+    Расшифровать 16 байтов (128 битов)
+    :param blocks: массив из 4 блоков по 4 байта (32 бита)
+    :param key: ключ из 256 битов
     """
     return [cast256.decrypt_block(block, key) for block in blocks]
 
 
-def encrypt_cbc(blocks, key):
+def encrypt_chunk(chunk: bytes, key):
     """
-    Cette fonction applique le chiffrement CAST256 à une liste de blocs de 128 bits suivant le mode d'opération CBC.
-    :param blocks: Liste de blocs à chiffrer.
-    :param key: clé de chiffrement 256 bits
-    :return: la liste de blocs chiffrés avec le vecteur initial utilisé en première position.
+    Зашифровать 16 байтов (128 битов)
+    :param chunk: 16 байтов
+    :param key: ключ из 256 битов
     """
-    iv = rdm_iv_generator()
-    encrypted_blocks = [iv]
-
-    temp = iv
-
-    for block in blocks:
-        temp = cast256.encrypt_block(block ^ temp, key)
-        encrypted_blocks.append(temp)
-
-    return encrypted_blocks
+    blocks = utils.split_on_parts(chunk, utils.parts_per_chunk)
+    return [cast256.encrypt_block(block, key) for block in blocks]
 
 
-def decrypt_cbc(blocks, key):
-    """
-    Cette fonction dé-chiffre une liste de blocs de 128 bits qui a été préalablement chiffrée
-    avec la méthode CAST256 suivant le mode d'opération CBC.
-    :param blocks: Liste de blocs à déchiffrer.
-    :param key: clé de chiffrement 256 bits
-    Identique à celle utilisée pour le chiffrement.
-    :return: la liste de blocs déchiffrés.
-    """
-    temp = blocks.pop(0)
-
-    decrypted_blocks = []
-
-    for block in blocks:
-        decrypted_blocks.append(cast256.decrypt_block(block, key) ^ temp)
-        temp = block
-
-    return decrypted_blocks
+def encrypt(message: str, key: bytes):
+    byte_msg = message.encode()
+    padded = padding(byte_msg)
+    chunks = utils.split_with_len(padded, utils.chunk_bytes)
+    return [encrypt_chunk(c, key) for c in chunks]
 
 
-def decrypt(blocks, key, operation_mode="ECB"):
-    """
-    Cette fonction dé-chiffre une liste de blocs de 128 bits qui a été préalablement chiffrée
-    avec la méthode CAST256 suivant le mode d'opération CBC ou ECB.
-    :param blocks: Liste de blocs à déchiffrer.
-    :param key: la clé de chiffrement 256 bit
-    :param operation_mode: string spécifiant le mode d'opération ("ECB" ou "CBC")
-    :return: la liste de blocs déchiffrés.
-    """
-    return decrypt_ecb(blocks, key) if operation_mode == "ECB" else decrypt_cbc(blocks, key)
-
-
-def encrypt(blocks, key, operation_mode="ECB"):
-    """
-    Cette fonction applique le chiffrement CAST256 à une liste de blocs de 128 bits.
-    :param blocks: Liste de blocs à chiffrer.
-    :param key: la clé de chiffrement 256 bit
-    :param operation_mode: string spécifiant le mode d'opération ("ECB" ou "CBC")
-    :return: la liste de blocs chiffrés avec le vecteur initial utilisé en première position.
-    """
-    return encrypt_ecb(blocks, key) if operation_mode == "ECB" else encrypt_cbc(blocks, key)
+def decrypt(encrypted: list[list[int]], key: bytes) -> str:
+    decrypted_bytes = [decrypt_chunk(c, key) for c in encrypted]
+    to_bytes = [
+        b''.join([byte.to_bytes(utils.parts_per_chunk, byteorder='big') for byte in c])
+        for c in decrypted_bytes
+    ]
+    result = b''.join(to_bytes)
+    return utils.depadding(result).decode()
