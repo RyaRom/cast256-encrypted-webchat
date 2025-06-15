@@ -4,12 +4,12 @@ from key_generator import *
 from utils import padding
 
 
-def random_key(bytes_count: int) -> int:
+def random_key(bytes_count: int = 32) -> bytes:
     """
     Случайный ключ от 128 до 256 бит длинной
     :param bytes_count: длина ключа
     """
-    return int.from_bytes(urandom(bytes_count), byteorder="big")
+    return urandom(bytes_count)
 
 
 def encrypt_block(message, key):
