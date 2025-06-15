@@ -1,5 +1,4 @@
 chunk_bytes = 16
-parts_per_chunk = 4
 
 
 def split_with_len(data, size):
@@ -13,6 +12,7 @@ def split_with_len(data, size):
 def padding(data: bytes):
     """
     Добавляем недостающие байты в конец по алгоритму pkcs#7
+    для разбиения на 128 битные блоки
     """
     size = len(data)
     padding_len = chunk_bytes - (size % chunk_bytes)
@@ -21,6 +21,9 @@ def padding(data: bytes):
 
 
 def depadding(padded: bytes):
+    """
+    Убираем лишние байты с конца
+    """
     padding_len = int(padded[-1])
     return padded[:-padding_len]
 

@@ -63,7 +63,7 @@ def encrypt(message: str, key: bytes) -> list[int]:
     return [encrypt_block(c, key) for c in chunks]
 
 
-def decrypt(encrypted: list[int], key: bytes) -> str:
+def decrypt(encrypted: list[int], key: bytes) -> bytes:
     """
     Расшифровать сообщение
     """
