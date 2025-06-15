@@ -1,30 +1,17 @@
-from  utils import *
-from functions_cast256 import *
+from cast256_kernel import *
 
 
 def forward_octave(abcdefgh, tr, tm):
     """
-      Cette fonction correspond à la forward_octave du cast-256. Elle décompose le bloc d'entrée 256bits en
-      blocs de 32bits. Ces blocs sont transformés par l'utilisation des fonctions f1, f2 et f3 du cast-256 en utilisant
-      les clés de rotation et de masque. Les blocs obtenus sont recomposés en un bloc de 256bits.
-      !!! ATTENTION A L'ORDRE DES OPERATIONS INDIQUE DANS LA DOCUMENTATION !!!
-      :param abcdefgh: le bloc à traité (256bits)
-      :param tr: tableau de 8 clés de rotation (8bits)
-      :param tm: tableau de 8 clés de masque (32bits)
-      :return: le résultat des opérations (256bits)
-      """
+    Эта функция реализует "прямую октаву" (forward octave) алгоритма CAST-256.
+    Она разбивает 256-битный входной блок на восемь 32-битных блоков (A, B, C, D, E, F, G, H),
+    и применяет к ним последовательность функций f1, f2 и f3, используя заданные ключи поворота (tr)
+    и маскирующие ключи (tm).
 
-    """
-    Let "KAPPA <- Wi(KAPPA)" be short-hand notation for the following:
-    G = G ^ f1(H, Tr0_(i), Tm0_(i))
-    F = F ^ f2(G, Tr1_(i), Tm1_(i))
-    E = E ^ f3(F, Tr2_(i), Tm2_(i))
-    D = D ^ f1(E, Tr3_(i), Tm3_(i))
-    C = C ^ f2(D, Tr4_(i), Tm4_(i))
-    B = B ^ f3(C, Tr5_(i), Tm5_(i))
-    A = A ^ f1(B, Tr6_(i), Tm6_(i))
-    H = H ^ f2(A, Tr7_(i), Tm7_(i))
-    (W(*) is called a "forward octave".)
+    :param abcdefgh: входной 256-битный блок
+    :param tr: список из 8 ключей поворота (по 8 бит)
+    :param tm: список из 8 масок (по 32 бита)
+    :return: модифицированный 256-битный блок
     """
     a, b, c, d, e, f, g, h = utils.extract_32bit_bloc_from_256(abcdefgh)
 
@@ -42,26 +29,12 @@ def forward_octave(abcdefgh, tr, tm):
 
 def initialization():
     """
-    Cette fonction crée les clés de rotation tr et de masque tm utiles à la génération des clés du cast-256.
-    :return: deux tableaux à deux dimensions 8x24 (24 lignes et 8 colonnes) contenant respectivement
-    les clés de rotation tr et de masque tm.
-    """
-    """
-    Initialization:
-    Cm = 2**30 * SQRT(2) = 5A827999 (base 16)
-    Mm = 2**30 * SQRT(3) = 6ED9EBA1 (base 16)
-    Cr = 19
-    Mr = 17
-    for (i=0; i<24; i++)
-    {
-        for (j=0; j<8; j++)
-        {
-            Tmj_(i) = Cm
-            Cm = (Cm + Mm) mod 2**32
-            Trj_(i) = Cr
-            Cr = (Cr + Mr) mod 32
-        }
-    }
+    Инициализирует таблицы ключей поворота (tr) и масок (tm),
+    необходимые для генерации ключей CAST-256.
+
+    Возвращает два двумерных списка 24x8:
+    - tr: 24 строки по 8 ключей поворота
+    - tm: 24 строки по 8 масок
     """
 
     cm = 0x5A827999
@@ -84,24 +57,12 @@ def initialization():
 
 def key_generator(key):
     """
-    Cette fonction génère les clés de rotation kr et de masque km pour le chiffrement cast-256 à partir de la clé 256bits
-    de chiffrement et des clés de rotation tr et de masque tm.
-    :param key: la clé de chiffrement (256bits)
-    :return: deux tableaux à deux dimensions 12x4 (12 lignes et 4 colonnes) contenant respectivement
-    les clés de rotation kr et de masque km.
-    """
+    Генерирует раундовые ключи (kr, km) из основной 256-битной ключа для CAST-256.
 
-    """
-    Key Schedule:
-    KAPPA = ABCDEFGH = 256 bit of primary key, K.
-    for (i=0; i<12; i++)
-    {
-    KAPPA <- W2i(KAPPA)
-    KAPPA <- W2i+1(KAPPA)
-    Kr_(i) <- KAPPA
-    Km_(i) <- KAPPA
-    }
-
+    :param key: основной ключ шифрования (256 бит)
+    :return: два списка:
+        - kr: список из 12 строк по 4 ключа поворота
+        - km: список из 12 строк по 4 маски
     """
     kr = []
     km = []
@@ -109,8 +70,8 @@ def key_generator(key):
     tr, tm = initialization()
 
     for i in range(12):
-        key = forward_octave(key, tr[2*i], tm[2*i])
-        key = forward_octave(key, tr[(2*i)+1], tm[(2*i)+1])
+        key = forward_octave(key, tr[2 * i], tm[2 * i])
+        key = forward_octave(key, tr[(2 * i) + 1], tm[(2 * i) + 1])
 
         a, b, c, d, e, f, g, h = utils.extract_32bit_bloc_from_256(key)
 

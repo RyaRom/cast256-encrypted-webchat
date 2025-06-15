@@ -1,4 +1,4 @@
-import mode_operation
+import cast256
 
 
 def concat(decrypted: list[int]):
@@ -7,12 +7,10 @@ def concat(decrypted: list[int]):
 
 
 def main():
-    # key = os.urandom(32)
-    key = mode_operation.random_key()
+    key = cast256.random_key(32)
     data = 'super secret message woof woof :3 woof woof :3'
-    encrypted = mode_operation.encrypt(data, key)
-    print(encrypted)
-    print(mode_operation.decrypt(encrypted, key))
+    encrypted = cast256.encrypt(data, key)
+    print(cast256.decrypt(encrypted, key))
 
 
 if __name__ == "__main__":

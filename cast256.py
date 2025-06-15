@@ -1,4 +1,15 @@
+from os import urandom
+
 from key_generator import *
+from utils import padding
+
+
+def random_key(bytes_count: int) -> int:
+    """
+    Случайный ключ от 128 до 256 бит длинной
+    :param bytes_count: длина ключа
+    """
+    return int.from_bytes(urandom(bytes_count), byteorder="big")
 
 
 def encrypt_block(message, key):
@@ -40,3 +51,24 @@ def decrypt_block(cipher, key):
         cipher = reverse_quad_round(cipher, kr[i], km[i])
 
     return cipher
+
+
+def encrypt(message: str, key: bytes) -> list[int]:
+    """
+    Зашифровать сообщение
+    """
+    byte_msg = message.encode()
+    padded = padding(byte_msg)
+    chunks = utils.split_with_len(padded, utils.chunk_bytes)
+    return [encrypt_block(c, key) for c in chunks]
+
+
+def decrypt(encrypted: list[int], key: bytes) -> str:
+    """
+    Расшифровать сообщение
+    """
+    decrypted_bytes = [decrypt_block(c, key) for c in encrypted]
+    to_bytes = b''.join([
+        byte.to_bytes(utils.chunk_bytes, byteorder='big') for byte in decrypted_bytes
+    ])
+    return utils.depadding(to_bytes)
