@@ -53,12 +53,13 @@ def decrypt_block(cipher, key):
     return cipher
 
 
-def encrypt(message: str, key: bytes) -> list[int]:
+def encrypt(message: str | bytes, key: bytes) -> list[int]:
     """
     Зашифровать сообщение
     """
-    byte_msg = message.encode()
-    padded = padding(byte_msg)
+    if type(message) is str:
+        message = message.encode()
+    padded = padding(message)
     chunks = utils.split_with_len(padded, utils.chunk_bytes)
     return [encrypt_block(c, key) for c in chunks]
 
