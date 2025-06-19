@@ -11,7 +11,6 @@ import cast256
 import rsa
 
 base_url = "cutegirlshub.tech"
-messages_buffer = []
 screen_limit = 30
 server_data = {
     'active_users': 0,
@@ -31,6 +30,10 @@ async def listen(websocket, sim_key: bytes, session: PromptSession):
             case 'info':
                 server_data = pickle.loads(payload)
                 session.app.invalidate()
+            case 'buffer':
+                messages = json.loads(payload)
+                for message in messages:
+                    print(message)
 
 
 async def send_messages(websocket, nickname, sim_key: bytes, session: PromptSession):

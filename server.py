@@ -14,6 +14,8 @@ server_info = {
     'active_users': 0,
     'users': []
 }
+message_buffer = []
+buffer_maxsize = 50
 
 
 async def handle_client(websocket: ServerConnection):
@@ -56,6 +58,7 @@ async def init_connection(websocket: ServerConnection):
     accept = pickle.loads(accept_msg)
     nickname = accept['body']
     add_user(nickname)
+    await send_cast_encrypted_message(websocket, sim_key, 'buffer', json.dumps(message_buffer))
     return nickname
 
 
@@ -69,25 +72,32 @@ def delete_user(nickname):
     server_info["users"].remove(nickname)
 
 
+def add_message(message):
+    message_buffer.append(message)
+    if len(message_buffer) > buffer_maxsize:
+        message_buffer.pop()
+
+
 async def handle_message(websocket: ServerConnection, request):
     key = connected_clients[websocket]
     message = cast256.decrypt(request["body"], key)
+    add_message(message.decode())
     print(f"got message {message}")
     await asyncio.gather(*[
-        send_encrypted_message(ws, key, 'message', message)
+        send_cast_encrypted_message(ws, key, 'message', message)
         for ws, key in list(connected_clients.items())
         if ws != websocket
     ])
 
 
-async def send_encrypted_message(
+async def send_cast_encrypted_message(
         ws: ServerConnection,
         key: bytes,
         msg_type: str,
         body: bytes | str
 ):
     try:
-        print(f'sending {body} to {ws.remote_address}')
+        # print(f'sending {body} to {ws.remote_address}')
         encrypted = cast256.encrypt(body, key)
         msg = {'type': msg_type, 'body': encrypted}
         await ws.send(pickle.dumps(msg))
@@ -101,7 +111,7 @@ async def send_encrypted_message(
 async def update_info():
     while True:
         await asyncio.gather(*[
-            send_encrypted_message(ws, key, 'info', pickle.dumps(server_info))
+            send_cast_encrypted_message(ws, key, 'info', pickle.dumps(server_info))
             for ws, key in list(connected_clients.items())
         ])
         await asyncio.sleep(20)
