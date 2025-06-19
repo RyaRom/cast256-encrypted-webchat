@@ -10,7 +10,7 @@ from prompt_toolkit.patch_stdout import patch_stdout
 import cast256
 import rsa
 
-base_url = "192.168.31.59"
+base_url = "cutegirlshub.tech"
 messages_buffer = []
 screen_limit = 30
 server_data = {
