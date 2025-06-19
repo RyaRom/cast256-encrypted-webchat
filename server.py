@@ -9,7 +9,7 @@ from websockets import ServerConnection
 import cast256
 import rsa
 
-connected_clients = dict()
+connected_clients: dict[ServerConnection, bytes] = dict()
 server_info = {
     'active_users': 0,
     'users': []
@@ -22,7 +22,7 @@ async def handle_client(websocket: ServerConnection):
         host, port = websocket.remote_address
 
         user = await init_connection(websocket)
-        await send_info(server_info)
+        asyncio.create_task(update_info())
         async for msg in websocket:
             request = json.loads(msg)
             print(f"{host}:{port}: received: {request}")
@@ -35,11 +35,11 @@ async def handle_client(websocket: ServerConnection):
         raise e
     except Exception as e:
         print(f"Unexpected error: {e}")
+        raise e
     finally:
         if user:
             print(f"Closing session for {user}")
             delete_user(user)
-            await send_info(server_info)
         connected_clients.pop(websocket, None)
 
 
@@ -51,7 +51,9 @@ async def init_connection(websocket: ServerConnection):
     connected_clients[websocket] = sim_key
     encrypted = rsa.encrypt(pkey, sim_key)
     await websocket.send(encrypted)
-    accept = pickle.loads(await websocket.recv())
+    accept_msg = await websocket.recv()
+    print(accept_msg)
+    accept = pickle.loads(accept_msg)
     nickname = accept['body']
     add_user(nickname)
     return nickname
@@ -80,9 +82,10 @@ async def handle_message(websocket: ServerConnection, request):
 
 async def send_encrypted_message(
         ws: ServerConnection,
-        key,
+        key: bytes,
         msg_type: str,
-        body):
+        body: bytes | str
+):
     try:
         print(f'sending {body} to {ws.remote_address}')
         encrypted = cast256.encrypt(body, key)
@@ -95,11 +98,13 @@ async def send_encrypted_message(
         print(f"Error sending to {ws.remote_address}: {e}")
 
 
-async def send_info(userinfo):
-    await asyncio.gather(*[
-        send_encrypted_message(ws, key, 'info', userinfo)
-        for ws, key in list(connected_clients.items())
-    ])
+async def update_info():
+    while True:
+        await asyncio.gather(*[
+            send_encrypted_message(ws, key, 'info', pickle.dumps(server_info))
+            for ws, key in list(connected_clients.items())
+        ])
+        await asyncio.sleep(5)
 
 
 async def main():

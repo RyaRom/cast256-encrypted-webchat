@@ -24,13 +24,12 @@ async def listen(websocket, sim_key: bytes, session: PromptSession):
     async for msg in websocket:
         data = pickle.loads(msg)
         request_type = data['type']
+        payload: bytes = cast256.decrypt(data['body'], sim_key)
         match request_type:
             case "message":
-                payload = data['body']
-                message = cast256.decrypt(payload, sim_key).decode()
-                print(message)
+                print(payload.decode())
             case 'info':
-                server_data = data['body']
+                server_data = pickle.loads(payload)
                 session.app.invalidate()
 
 
@@ -63,16 +62,18 @@ async def chat():
         )
         await websocket.send(pkey_bytes)
         sim_key_encrypted = await websocket.recv()
-        confirm = {'type': 'accept', 'body': nickname}
         sim_key = rsa.decrypt(private_key, sim_key_encrypted)
-        await websocket.send(pickle.dumps(confirm))
         print(f"Received cast256 key...")
         print("Established connection...")
         session = PromptSession()
+        confirm = {'type': 'accept', 'body': nickname}
+        await websocket.send(pickle.dumps(confirm))
 
-        receive_msg_task = asyncio.create_task(listen(websocket, sim_key))
-        send_messages_task = asyncio.create_task(send_messages(websocket, nickname, sim_key))
+        receive_msg_task = asyncio.create_task(listen(websocket, sim_key, session))
+        send_messages_task = asyncio.create_task(send_messages(
+            websocket, nickname, sim_key, session))
         await asyncio.gather(receive_msg_task, send_messages_task)
+
 
 
 if __name__ == "__main__":
