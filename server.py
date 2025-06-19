@@ -104,7 +104,7 @@ async def update_info():
             send_encrypted_message(ws, key, 'info', pickle.dumps(server_info))
             for ws, key in list(connected_clients.items())
         ])
-        await asyncio.sleep(5)
+        await asyncio.sleep(20)
 
 
 async def main():
